@@ -1,0 +1,578 @@
+"use client";
+
+import { Layout, Menu, Typography, theme, type MenuProps } from "antd";
+import {
+  BarChartOutlined,
+  CalendarOutlined,
+  CarOutlined,
+  DollarOutlined,
+  DashboardOutlined,
+  FileExclamationOutlined,
+  SafetyCertificateOutlined,
+  ToolOutlined,
+  TeamOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/lib/auth";
+
+const { Header, Sider, Content } = Layout;
+
+export default function DashboardShell({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { user, roles, has, loading, logout } = useAuth();
+  const [collapsed, setCollapsed] = useState(false);
+  const { token } = theme.useToken();
+
+  const hideDashboard = useMemo(() => roles.includes("EmployeeEntry"), [roles]);
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    const salutation = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+    return `${salutation}, ${user?.full_name || user?.username || "User"}`;
+  }, [user?.full_name, user?.username]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+
+    if (hideDashboard && pathname?.startsWith("/dashboard")) {
+      router.replace("/employees");
+    }
+  }, [hideDashboard, loading, pathname, router, user]);
+
+  const rootSubmenuKeys = useMemo(() => ["hrm", "clients", "fleet", "inventory", "accounts", "super-admin"], []);
+  const submenuToRootKey = useMemo(() => ({
+    "vehicle-assignments": "fleet",
+  }) as Record<string, string>, []);
+
+  const selectedKeys = useMemo(() => {
+    if (!pathname) return ["employees"];
+    if (pathname.startsWith("/dashboard")) return hideDashboard ? ["employees"] : ["dashboard"];
+    if (pathname.startsWith("/employees-inactive")) return ["employees-inactive"];
+    if (pathname.startsWith("/employees/inventory")) return ["employees-inventory"];
+    if (pathname.startsWith("/employees")) return ["employees"];
+    if (pathname.startsWith("/attendance")) return ["attendance"];
+    if (pathname.startsWith("/hr/pending-deactivate")) return ["hr-pending-deactivate"];
+    if (pathname.startsWith("/payroll2")) return ["payroll2"];
+    if (pathname.startsWith("/payroll")) return ["payroll"];
+    if (pathname.startsWith("/performance")) return ["performance"];
+    if (pathname.startsWith("/client-management")) return ["client-management"];
+    if (pathname.startsWith("/accounts-advances/expenses")) return ["accounts-expenses"];
+    if (pathname.startsWith("/accounts-advances")) return ["accounts-employee-records"];
+    if (pathname.startsWith("/super-admin/users")) return ["super-admin-users"];
+    if (pathname.startsWith("/super-admin/roles")) return ["super-admin-roles"];
+    if (pathname.startsWith("/super-admin/permissions")) return ["super-admin-permissions"];
+    if (pathname.startsWith("/super-admin")) return ["super-admin-home"];
+    if (pathname.startsWith("/general-inventory")) return ["general-inventory"];
+    if (pathname.startsWith("/restricted-inventory")) return ["restricted-inventory"];
+    if (pathname.startsWith("/vehicles")) return ["vehicles"];
+    if (pathname.startsWith("/vehicle-assignments")) return ["vehicle-assignments"];
+    if (pathname.startsWith("/vehicle-maintenance")) return ["vehicle-maintenance"];
+    if (pathname.startsWith("/fuel-mileage")) return ["fuel-mileage"];
+    return ["employees"];
+  }, [hideDashboard, pathname]);
+
+  const activeRootKey = useMemo(() => {
+    const key = selectedKeys[0];
+    if (["employees", "employees2", "employees-inactive", "employees-inventory", "attendance", "payroll", "performance", "hr-pending-deactivate"].includes(key)) return "hrm";
+    if (["client-management"].includes(key)) return "clients";
+    if (["accounts-employee-records", "accounts-expenses"].includes(key)) return "accounts";
+    if (["vehicles", "vehicle-assignments", "vehicle-maintenance", "fuel-mileage"].includes(key)) return "fleet";
+    if (["general-inventory", "restricted-inventory"].includes(key)) return "inventory";
+    return "hrm";
+  }, [selectedKeys]);
+
+  const menuItems = useMemo<NonNullable<MenuProps["items"]>>(() => {
+    const items: NonNullable<MenuProps["items"]> = [];
+
+    const addDivider = () => {
+      if (items.length === 0) return;
+      const last = items[items.length - 1];
+      if (last && typeof last === "object" && "type" in last && last.type === "divider") return;
+      items.push({ type: "divider" });
+    };
+
+    if (!hideDashboard) {
+      items.push({
+        key: "dashboard",
+        icon: <DashboardOutlined />,
+        label: <Link href="/dashboard">Dashboard</Link>,
+      });
+    }
+
+    const hrmChildren: NonNullable<MenuProps["items"]> = [];
+    if (has("employees:view")) {
+      // Hidden for now
+      // hrmChildren.push({
+      //   key: "employees",
+      //   icon: <TeamOutlined />,
+      //   label: <Link href="/employees">Employees</Link>,
+      // });
+      hrmChildren.push({
+        key: "employees2",
+        icon: <TeamOutlined />,
+        label: <Link href="/employees2">Master Profiles</Link>,
+      });
+      hrmChildren.push({
+        key: "employees-inactive",
+        icon: <TeamOutlined />,
+        label: <Link href="/employees-inactive">Inactive Employees</Link>,
+      });
+
+      hrmChildren.push({
+        key: "hr-pending-deactivate",
+        icon: <FileExclamationOutlined />,
+        label: <Link href="/hr/pending-deactivate">Pending Deactivate</Link>,
+      });
+      if (has("inventory:view")) {
+        hrmChildren.push({
+          key: "employees-inventory",
+          icon: <SafetyCertificateOutlined />,
+          label: <Link href="/employees/inventory">Employee Inventory</Link>,
+        });
+      }
+    }
+    if (has("attendance:manage")) {
+      hrmChildren.push({
+        key: "attendance",
+        icon: <CalendarOutlined />,
+        label: <Link href="/attendance">Attendance</Link>,
+      });
+    }
+    if (has("payroll:view")) {
+      // Hidden for now
+      // hrmChildren.push({
+      //   key: "payroll",
+      //   icon: <DollarOutlined />,
+      //   label: <Link href="/payroll">Payroll</Link>,
+      // });
+      hrmChildren.push({
+        key: "payroll2",
+        icon: <DollarOutlined />,
+        label: <Link href="/payroll2">Salaries</Link>,
+      });
+    }
+
+    if (hrmChildren.length > 0) {
+      items.push({
+        key: "hrm",
+        icon: <UserOutlined />,
+        label: "HRM",
+        children: hrmChildren,
+      });
+      addDivider();
+    }
+
+    if (has("clients:view")) {
+      items.push({
+        key: "clients",
+        icon: <UserOutlined />,
+        label: "Clients",
+        children: [
+          {
+            key: "client-management",
+            icon: <UserOutlined />,
+            label: <Link href="/client-management">Client Management</Link>,
+          },
+        ],
+      });
+      addDivider();
+    }
+
+    if (has("accounts:full")) {
+      items.push({
+        key: "accounts",
+        icon: <DollarOutlined />,
+        label: "Accounts/Advances",
+        children: [
+          {
+            key: "accounts-employee-records",
+            icon: <TeamOutlined />,
+            label: <Link href="/accounts-advances/employees">Employee Records</Link>,
+          },
+          {
+            key: "accounts-expenses",
+            icon: <DollarOutlined />,
+            label: <Link href="/accounts-advances/expenses">Expenses</Link>,
+          },
+        ],
+      });
+      addDivider();
+    }
+
+    if (has("fleet:view")) {
+      items.push({
+        key: "fleet",
+        icon: <CarOutlined />,
+        label: "Fleet Management",
+        children: [
+          {
+            key: "vehicles",
+            icon: <CarOutlined />,
+            label: <Link href="/vehicles">Vehicles</Link>,
+          },
+          {
+            key: "vehicle-assignments",
+            icon: <TeamOutlined />,
+            label: <Link href="/vehicle-assignments">Vehicle Assignments</Link>,
+            children: [
+              {
+                key: "vehicle-assignments-efficiency",
+                icon: <BarChartOutlined />,
+                label: <Link href="/vehicle-assignments/efficiency">Assignment Efficiency</Link>,
+              },
+            ],
+          },
+          {
+            key: "vehicle-maintenance",
+            icon: <ToolOutlined />,
+            label: <Link href="/vehicle-maintenance">Vehicle Maintenance</Link>,
+          },
+          {
+            key: "fuel-mileage",
+            icon: <DashboardOutlined />,
+            label: <Link href="/fuel-mileage">Fuel & Mileage</Link>,
+          },
+        ],
+      });
+      addDivider();
+    }
+
+    if (has("inventory:view")) {
+      items.push({
+        key: "inventory",
+        icon: <SafetyCertificateOutlined />,
+        label: "Inventory",
+        children: [
+          {
+            key: "general-inventory",
+            icon: <SafetyCertificateOutlined />,
+            label: <Link href="/general-inventory">General Inventory</Link>,
+          },
+          {
+            key: "restricted-inventory",
+            icon: <SafetyCertificateOutlined />,
+            label: <Link href="/restricted-inventory">Restricted Weapons</Link>,
+          },
+        ],
+      });
+      addDivider();
+    }
+
+    if (has("rbac:admin")) {
+      items.push({
+        key: "super-admin",
+        icon: <UserOutlined />,
+        label: "Super Admin",
+        children: [
+          { key: "super-admin-home", label: <Link href="/super-admin">Overview</Link> },
+          { key: "super-admin-users", label: <Link href="/super-admin/users">Users</Link> },
+          { key: "super-admin-roles", label: <Link href="/super-admin/roles">Roles</Link> },
+          { key: "super-admin-permissions", label: <Link href="/super-admin/permissions">Permissions</Link> },
+        ],
+      });
+      addDivider();
+    }
+
+    items.push({
+      key: "logout",
+      icon: <UserOutlined />,
+      label: (
+        <span
+          onClick={() => {
+            logout();
+            router.replace("/login");
+          }}
+        >
+          Logout
+        </span>
+      ),
+    });
+
+    return items;
+  }, [has, hideDashboard, logout, router]);
+
+  const sidebarLogoSize = 120;
+  const sidebarHeaderHeight = 124;
+  const sidebarMenuTopGap = 0;
+
+  const collapsedLogoSize = 48;
+
+  const [openKeys, setOpenKeys] = useState<string[]>([activeRootKey]);
+
+  return (
+    <Layout
+      style={{
+        height: "100vh",
+        overflow: "hidden",
+        padding: 0,
+        background: token.colorBgLayout,
+      }}
+    >
+      <style jsx global>{`
+        .ant-layout-sider {
+          background: transparent !important;
+          box-shadow: none !important;
+          border-right: 1px solid #d9d9d9 !important;
+        }
+        .ant-layout-sider-children {
+          box-shadow: none !important;
+        }
+        .ant-layout-sider-trigger {
+          box-shadow: none !important;
+          background: transparent !important;
+          color: #000000 !important;
+          border-top: 1px solid #d9d9d9 !important;
+        }
+        .ant-layout-sider-trigger:hover {
+          background: transparent !important;
+          color: #000000 !important;
+        }
+        .ant-layout-sider-trigger .anticon {
+          color: #000000 !important;
+        }
+        .ant-layout-sider-zero-width-trigger {
+          background: transparent !important;
+          color: #000000 !important;
+          box-shadow: none !important;
+        }
+        .ant-layout-sider .ant-menu {
+          background: transparent !important;
+          box-shadow: none !important;
+        }
+        .ant-layout-sider .ant-menu-sub {
+          background: transparent !important;
+        }
+        .ant-layout-sider .ant-menu-title-content,
+        .ant-layout-sider .ant-menu-item,
+        .ant-layout-sider .ant-menu-submenu-title,
+        .ant-layout-sider .ant-menu-item a {
+          color: #000000 !important;
+        }
+        .ant-layout-sider .ant-menu-item .anticon,
+        .ant-layout-sider .ant-menu-submenu-title .anticon,
+        .ant-layout-sider .ant-menu-submenu-arrow {
+          color: #000000 !important;
+        }
+        .ant-layout-sider .ant-menu-item {
+          background: transparent !important;
+          box-shadow: none !important;
+          border: none !important;
+        }
+        .ant-layout-sider .ant-menu-item:hover {
+          background: transparent !important;
+          box-shadow: none !important;
+        }
+        .ant-layout-sider .ant-menu-item-selected {
+          background: transparent !important;
+          box-shadow: none !important;
+          border: none !important;
+          outline: none !important;
+        }
+        .ant-layout-sider .ant-menu-item-selected::after {
+          display: none !important;
+        }
+        .ant-layout-sider .ant-menu-item::after {
+          display: none !important;
+        }
+        .ant-layout-sider .ant-menu-item-selected .ant-menu-title-content,
+        .ant-layout-sider .ant-menu-item-selected a,
+        .ant-layout-sider .ant-menu-item-selected .anticon {
+          color: #000000 !important;
+        }
+        .ant-layout-sider .ant-menu-item:hover .ant-menu-title-content,
+        .ant-layout-sider .ant-menu-item:hover a,
+        .ant-layout-sider .ant-menu-item:hover .anticon {
+          color: #000000 !important;
+        }
+        .ant-layout-sider .ant-menu-submenu-title:hover {
+          background: transparent !important;
+          box-shadow: none !important;
+          border: none !important;
+          outline: none !important;
+        }
+        .ant-layout-sider .ant-menu-submenu-title:hover .ant-menu-title-content,
+        .ant-layout-sider .ant-menu-submenu-title:hover .anticon {
+          color: #000000 !important;
+        }
+        .ant-layout-sider .ant-menu-submenu-open .ant-menu-submenu-title {
+          background: transparent !important;
+          box-shadow: none !important;
+          border: none !important;
+          outline: none !important;
+        }
+        .ant-layout-sider .ant-menu-submenu-open .ant-menu-submenu-title .ant-menu-title-content,
+        .ant-layout-sider .ant-menu-submenu-open .ant-menu-submenu-title .anticon {
+          color: #000000 !important;
+        }
+        .ant-layout-sider .ant-menu-submenu-open > .ant-menu-submenu-arrow {
+          color: #000000 !important;
+        }
+        .ant-layout-sider .ant-menu-submenu-inline > .ant-menu-submenu-title {
+          background: transparent !important;
+          box-shadow: none !important;
+          border: none !important;
+          outline: none !important;
+        }
+        .ant-layout-sider .ant-menu-submenu-inline > .ant-menu-submenu-title:hover {
+          background: transparent !important;
+          box-shadow: none !important;
+          border: none !important;
+          outline: none !important;
+        }
+        .ant-layout-sider .ant-menu-submenu-arrow {
+          color: #000000 !important;
+        }
+        .ant-layout-sider .ant-menu-submenu-open .ant-menu-submenu-arrow {
+          color: #000000 !important;
+        }
+        .ant-layout-sider .ant-menu-sub .ant-menu-item {
+          background: transparent !important;
+          box-shadow: none !important;
+          border: none !important;
+          outline: none !important;
+        }
+        .ant-layout-sider .ant-menu-sub .ant-menu-item:hover {
+          background: transparent !important;
+          box-shadow: none !important;
+          border: none !important;
+          outline: none !important;
+        }
+        .ant-layout-sider .ant-menu-sub .ant-menu-item-selected {
+          background: transparent !important;
+          box-shadow: none !important;
+          border: none !important;
+          outline: none !important;
+        }
+        .ant-layout-sider .ant-menu-sub .ant-menu-item-selected::after {
+          display: none !important;
+        }
+        .ant-layout-sider .ant-menu-sub .ant-menu-item::after {
+          display: none !important;
+        }
+        .ant-layout-sider .ant-menu-sub .ant-menu-item-divider {
+          background: #d9d9d9 !important;
+          margin: 8px 12px !important;
+        }
+      `}</style>
+
+      <Sider
+        collapsible
+        collapsed={collapsed}
+        onCollapse={setCollapsed}
+        collapsedWidth={96}
+        width={256}
+        style={{
+          background: "transparent",
+          borderRight: "1px solid #d9d9d9",
+          height: "100vh",
+          borderRadius: 0,
+          overflow: "hidden",
+          marginRight: 0,
+        }}
+      >
+        <div
+          style={{
+            height: sidebarHeaderHeight,
+            display: "flex",
+            alignItems: "center",
+            padding: 0,
+            fontWeight: 700,
+            letterSpacing: 0.2,
+            color: "#000000",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              background: "transparent",
+              borderRadius: 0,
+              padding: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <img
+              src={collapsed ? "/sidebar-logo-collapsed.png" : "/logo-removebg-preview.png"}
+              alt="Logo"
+              width={collapsed ? collapsedLogoSize : sidebarLogoSize}
+              height={collapsed ? collapsedLogoSize : sidebarLogoSize}
+              style={{ display: "block" }}
+            />
+          </div>
+        </div>
+        <Menu
+          theme="light"
+          mode="inline"
+          selectedKeys={selectedKeys}
+          openKeys={openKeys}
+          onOpenChange={(keys) => {
+            const latestOpenedKey = keys.find((k) => !openKeys.includes(k));
+
+            if (!latestOpenedKey) {
+              setOpenKeys(keys);
+              return;
+            }
+
+            if (rootSubmenuKeys.includes(latestOpenedKey)) {
+              setOpenKeys([latestOpenedKey]);
+              return;
+            }
+
+            const root = submenuToRootKey[latestOpenedKey] ?? activeRootKey;
+            setOpenKeys([root, latestOpenedKey]);
+          }}
+          style={{
+            height: `calc(100% - ${sidebarHeaderHeight}px - ${sidebarMenuTopGap}px)`,
+            overflow: "hidden",
+            background: "transparent",
+            paddingTop: sidebarMenuTopGap,
+          }}
+          items={menuItems}
+        />
+      </Sider>
+
+      <Layout style={{ height: "100vh", overflow: "hidden" }}>
+        <Header
+          style={{
+            background: "transparent",
+            borderBottom: "1px solid rgba(0,0,0,0.08)",
+            padding: "0 24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-start",
+            height: 56,
+          }}
+        >
+          <Typography.Title level={3} style={{ margin: 0 }}>
+            {greeting}
+          </Typography.Title>
+        </Header>
+
+        <Content
+          className="flash-dashboard-bg"
+          style={{
+            padding: 16,
+            background: token.colorBgLayout,
+            overflow: "auto",
+            height: "calc(100% - 56px)",
+          }}
+        >
+          {children}
+        </Content>
+      </Layout>
+    </Layout>
+  );
+}

@@ -1,0 +1,57 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "provider": "node",
+  "steps": {
+    "setup": [
+      {
+        "cmd": "mkdir -p /app/backend /app/frontend"
+      },
+      {
+        "src": "backend-flash-dockpoly/requirements.txt",
+        "dest": "/app/backend/requirements.txt"
+      },
+      {
+        "src": "backend-flash-dockpoly/app",
+        "dest": "/app/backend/app"
+      },
+      {
+        "src": "backend-flash-dockpoly/alembic",
+        "dest": "/app/backend/alembic"
+      },
+      {
+        "src": "backend-flash-dockpoly/alembic.ini",
+        "dest": "/app/backend/"
+      },
+      {
+        "src": "frontend-next/package.json",
+        "dest": "/app/frontend/package.json"
+      },
+      {
+        "src": "frontend-next/next.config.js",
+        "dest": "/app/frontend/"
+      },
+      {
+        "src": "frontend-next/public",
+        "dest": "/app/frontend/public"
+      },
+      {
+        "src": "frontend-next/src",
+        "dest": "/app/frontend/src"
+      },
+      {
+        "cmd": "cd /app/backend && python -m pip install --upgrade pip --root-user-action=ignore && pip install -r requirements.txt --root-user-action=ignore"
+      },
+      {
+        "cmd": "cd /app/frontend && npm install --production=false"
+      }
+    ],
+    "build": [
+      {
+        "cmd": "cd /app/frontend && npm run build"
+      }
+    ]
+  },
+  "deploy": {
+    "startCommand": "cd /app/backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+  }
+}
