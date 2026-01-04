@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.railpack.com",
-  "provider": "node",
+  "provider": "python",
   "steps": {
-    "setup": [
+    "install": [
       {
         "cmd": "mkdir -p /app/backend /app/frontend"
       },
@@ -42,12 +42,7 @@
         "cmd": "cd /app/backend && python -m pip install --upgrade pip --root-user-action=ignore && pip install -r requirements.txt --root-user-action=ignore"
       },
       {
-        "cmd": "cd /app/frontend && npm install --production=false"
-      }
-    ],
-    "build": [
-      {
-        "cmd": "cd /app/frontend && npm run build"
+        "cmd": "cd /app/frontend && npm install --production=false && npm run build"
       }
     ]
   },
